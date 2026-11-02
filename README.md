@@ -1,8 +1,8 @@
 # FrizzLife LP365-P — read-only Home Assistant integration
 
-Trial version 0.2.1, tested with Home Assistant 2026.10.4 and one LP365-P using local protocol 3.5. Local authentication, live entities, the four dashboard tabs and Energy water/flow source selection were verified. Multi-device and other firmware support remain untested.
+Trial version 0.3.0, tested with Home Assistant 2026.10.4 and one LP365-P using local protocol 3.5. Local authentication, live entities, the seven dashboard tabs and Energy water/flow source selection were verified. Multi-device and other firmware support remain untested.
 
-Provides native sensor and binary sensor entities, plus a reusable four-tab Lovelace dashboard: Overview, Usage, Diagnostics and Meter comparison. No control entities, services, valve commands, protection changes or resets. Polls every 30 seconds using local Tuya status queries. Phone apps or another local integration may compete for the device's single connection.
+Provides native sensor and binary sensor entities, plus a reusable seven-tab Lovelace dashboard: Overview, Usage, Diagnostics, Meter comparison, Quality, Leak protection and Scenarios. No device-control entities, valve commands, protection changes or resets. A separate notification-test action sends only messages. Polls every 30 seconds using local Tuya status queries. Phone apps or another local integration may compete for the device's single connection.
 
 ## Installation
 
@@ -62,3 +62,21 @@ Automatic updates check the **maintained JSON catalogue in this repository** dai
 Welsh Water 2026–27 tariff source: [household scheme of charges](https://corporate.dwrcymru.com/-/media/project/files/page-documents/corporate/library/our-charges/scheme-of-charges/scheme-of-charges-2026-2027.ashx). Calculation is cross-checked against the supplier’s [52 m³/year metered example](https://www.dwrcymru.com/en/help-advice/water-meters/switching-to-a-water-meter).
 
 Pressure is exposed simultaneously in psi and bar, with two live dashboard rows. Version 0.2.1 also uses serialisable standard numeric form validators, with finite-value checks on submission.
+
+## Trends, observation quality and pressure summaries
+
+Version 0.3.0 adds recorded week/month totals, yesterday from a usable day, rolling 7/30/90-day averages with sample counts, history-target progress gauges and observed coverage. Current-day usage comes from the device daily counter; previous dates use recorded hourly changes and can be incomplete. Averages and cost comparisons require all expected hourly statistics, at least 99% observed water-counter coverage, and no observation gap over 90 seconds. DST dates use their actual duration. Coverage before observation tracking began is unknown and counts as unobserved, not as proof of a device fault or zero consumption. Old history is retained but cannot be certified retrospectively. Coverage and pressure observations persist locally, with periodic saves; a crash can lose the latest minute.
+
+Daily pressure minimum, maximum and arithmetic mean use successful observed samples in bar, and may describe only part of the day. Flow observations restart after a gap or reload; unknown data never becomes a leak all-clear. Default patterns are >=5 L/h for 60 minutes, and 30 minutes during the local 00:00–06:00 night window. High daily use requires 7 usable days, exceeds twice the 30-day observed average and exceeds 500 L. These are adjustable observation rules, not verified leak diagnoses or device shutoff limits.
+
+Cost sensitivity defaults are 20% less/more usage and a 10% increase in both metered standing and volumetric charges, keeping the unmetered baseline unchanged. Percentages are editable under observation/scenario options. No future price increase is predicted.
+
+## Notifications and shutoff review
+
+Enable HA notifications and optionally select a `mobile_app_…` phone destination in integration options. Messages cover device leak warnings/alarms, valve-closed and protection-disabled states, reported fault bits, a monitoring outage (default 5 minutes) and the configured usage patterns. Notifications are emitted on transitions, not every poll. Missing data does not clear an alert. Recovery means a reported condition/rule is no longer active, not that a leak has been physically resolved. HA persistent messages use stable IDs; the last-message sensor keeps ten recent messages. Phone-service acceptance does not prove phone receipt. Failed/unavailable phone sends are queued locally and retried, with a maximum 24-hour age and ten pending messages. HA and network availability are required.
+
+The only extra action is `frizzlife_readonly.test_notifications`, targeting one loaded integration entry. It sends a clearly labelled test through the selected HA/phone destinations and sends no device command. Existing entries can load quality/alert entities even when the device is offline at HA startup.
+
+Device-side Protect/Unprotect and actual valve shutoff remain independent of this read-only integration. [The shutoff review](docs/leak-protection.md) describes the manufacturer guidance and a supervised next step. This project does not change device protection, reset alarms, run its leak test, or operate its valve.
+
+Version 0.3.0 validation: 23 Python tests, dashboard tests and compilation pass. Live HA 2026.10.4 loaded 94 entities and all seven views; observed pressure summaries, coverage, current-day/week/month totals, scenario assumptions and notification settings were verified. A notification-only test created an HA message and was accepted by the selected mobile-app service. That does not by itself prove receipt on the handset. No valve/protection command or physical closure test was performed.

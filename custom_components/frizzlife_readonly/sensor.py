@@ -3,6 +3,7 @@ from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, Sen
 from homeassistant.helpers.entity import EntityCategory
 from .entity import MonitorEntity
 from .comparison_sensor import ComparisonSensor, SENSORS as COMPARISON_SENSORS
+from .analytics_sensor import AnalyticsSensor, SENSORS as ANALYTICS_SENSORS
 
 EXTRA_DIAGNOSTICS = {
     "mode_group": "Protection mode group",
@@ -35,6 +36,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         ])
     entities.extend(Reading(c, key, name) for key, name in EXTRA_DIAGNOSTICS.items())
     entities.extend(ComparisonSensor(c.comparison, key) for key in COMPARISON_SENSORS)
+    entities.extend(AnalyticsSensor(c.analytics, key) for key in ANALYTICS_SENSORS)
     async_add_entities(entities)
 
 

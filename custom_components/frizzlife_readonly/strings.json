@@ -26,7 +26,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Water meter cost comparison",
+        "title": "Water comparison and alerts",
         "description": "Indicative household comparison using recorded full days. Enter your actual annual unmetered bill; 0 means unknown. Welsh Water presets are for standard household tariffs. Only choose the surface-water rebate if it has been approved. Automatic updates check the maintained GitHub tariff catalogue daily, not a supplier live feed. Custom suppliers require manual rates. Missing or expired tariffs never produce estimates.",
         "data": {
           "comparison_enabled": "Enable meter cost comparison",
@@ -34,7 +34,10 @@
           "annual_unmetered_bill": "Current annual unmetered bill (£; 0 if unknown)",
           "comparison_days": "Usage look-back window (days)",
           "sewer_return_percent": "Water returned to sewer (%)",
-          "auto_tariffs": "Check maintained tariff catalogue daily"
+          "auto_tariffs": "Check maintained tariff catalogue daily",
+          "notifications_enabled": "Enable Home Assistant water alerts and messages",
+          "phone_notify_service": "Phone push destination",
+          "configure_monitoring": "Edit observation thresholds and cost scenarios"
         }
       },
       "custom": {
@@ -47,11 +50,28 @@
           "custom_standing": "Combined standing charge (£ per year)",
           "custom_valid_until": "Tariff valid until"
         }
+      },
+      "monitoring": {
+        "title": "Observation thresholds and scenarios",
+        "description": "These thresholds produce observations/messages only. They never change device protection or operate the valve. Overnight detection uses HA local time. Any polling gap over 90 seconds restarts a continuous-flow observation. High daily use requires at least 7 usable recorded days. Scenario price change affects both standing and usage charges; it is not a tariff forecast.",
+        "data": {
+          "flow_observation_lph": "Flow observation threshold (L/h)",
+          "sustained_minutes": "Sustained flow duration (minutes)",
+          "overnight_minutes": "Night flow duration (minutes)",
+          "offline_minutes": "Monitoring outage notification delay (minutes)",
+          "high_daily_min_litres": "Minimum unusual daily usage threshold (L)",
+          "high_daily_multiplier": "High daily use multiplier versus 30-day observed average",
+          "scenario_usage_percent": "Higher/lower usage scenario (%)",
+          "scenario_tariff_percent": "Tariff-increase scenario (%)",
+          "night_start_hour": "Night window start hour (0–23)",
+          "night_end_hour": "Night window end hour (0–23)"
+        }
       }
     },
     "error": {
       "invalid_tariff_date": "Enter a current or future tariff end date.",
-      "invalid_number": "Enter finite, non-negative amounts within the stated limits."
+      "invalid_number": "Enter finite, non-negative amounts within the stated limits.",
+      "invalid_night_window": "Night start and end hours must differ."
     }
   }
 }

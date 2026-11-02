@@ -4,9 +4,6 @@ import json
 import logging
 from pathlib import Path
 
-from homeassistant.components.recorder import get_instance
-from homeassistant.components.recorder.statistics import statistics_during_period
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
@@ -15,6 +12,7 @@ from homeassistant.util import dt as dt_util
 from .comparison import calculate, complete_daily_usage, select_tariff, validate_catalog
 from .const import DOMAIN
 from .readings import decode
+from .analytics import scenarios
 
 CATALOG_URL = "https://raw.githubusercontent.com/shirehorse99/Frizzlife-LP365-P/main/custom_components/frizzlife_readonly/tariffs.json"
 
@@ -95,28 +93,15 @@ class ComparisonCoordinator(DataUpdateCoordinator):
             self.tariff = select_tariff(self.catalog, options.get("tariff_profile", "welsh_standard"), now.date())
             if self.tariff:
                 self.tariff["return_percent"] = options.get("sewer_return_percent", self.tariff["return_percent"])
-        self.days = []
-        registry = er.async_get(self.hass)
-        entity_id = registry.async_get_entity_id("sensor", DOMAIN, f"{self.entry.data['device_id']}_water_today")
-        if entity_id and "recorder" in self.hass.config.components:
-            try:
-                midnight = dt_util.start_of_local_day(now)
-                window = options.get("comparison_days", 30)
-                rows = await get_instance(self.hass).async_add_executor_job(
-                    statistics_during_period, self.hass, dt_util.as_utc(midnight - timedelta(days=window + 2)),
-                    dt_util.as_utc(midnight), {entity_id}, "hour", {"volume": "m³"}, {"change"})
-                self.days = complete_daily_usage(rows.get(entity_id, []), now, window)
-                self.stats_status = "Recorded full hourly days" if self.days else "Waiting for full days"
-            except Exception:
-                self.stats_status = "Recorder statistics unavailable"
-        else:
-            self.stats_status = "Verified volume sensor and Recorder required"
+        self.days = self.monitor.analytics.sample(options.get("comparison_days", 30))
+        self.stats_status = "Recorded full hourly days" if self.days else "Waiting for full days with sufficient observed coverage"
         return self._values()
 
     def _values(self):
         options = self.entry.options
         today = decode(self.monitor.data or {}, "water_today") if self.monitor.last_update_success else None
         values = calculate(self.tariff, options.get("annual_unmetered_bill", 0), self.days, today)
+        values.update(scenarios(self.tariff, values.get("average_daily_litres"), options.get("annual_unmetered_bill", 0), options))
         values.update(tariff_status=self.check_status if self.tariff else "No valid dated tariff — check options/expiry",
                       tariff_last_checked=self.last_checked)
         if self.tariff:
@@ -138,5 +123,7 @@ class ComparisonCoordinator(DataUpdateCoordinator):
         if self.entry.options.get("comparison_enabled", False) and self.entry.data.get("verified_volume", False) and self.data is not None:
             # Preserve the hourly statistics/tariff refresh deadline. Calling
             # async_set_updated_data every 30 seconds would postpone it forever.
+            self.days = self.monitor.analytics.sample(self.entry.options.get("comparison_days", 30))
+            self.stats_status = "Recorded full hourly days" if self.days else "Waiting for full days with sufficient observed coverage"
             self.data = self._values()
             self.async_update_listeners()

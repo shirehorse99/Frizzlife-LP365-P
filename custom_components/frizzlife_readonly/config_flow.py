@@ -51,10 +51,15 @@ class ComparisonOptionsFlow(config_entries.OptionsFlow):
                     errors["base"] = "invalid_number"
             if not errors:
                 self.pending = {**self.config_entry.options, **user_input}
+                self.edit_monitoring = self.pending.pop("configure_monitoring", False)
                 if user_input["tariff_profile"] == "custom":
                     return await self.async_step_custom()
-                return self.async_create_entry(title="", data=self.pending)
+                return await self.async_finish_options()
         o = self.config_entry.options
+        services = sorted(name for name in self.hass.services.async_services().get("notify", {}) if name.startswith("mobile_app_"))
+        selected = o.get("phone_notify_service", "none")
+        if selected != "none" and selected not in services:
+            services.append(selected)
         return self.async_show_form(step_id="init", errors=errors, data_schema=vol.Schema({
             vol.Required("comparison_enabled", default=o.get("comparison_enabled", False)): bool,
             vol.Required("tariff_profile", default=o.get("tariff_profile", "welsh_standard")): selector.SelectSelector(
@@ -63,6 +68,11 @@ class ComparisonOptionsFlow(config_entries.OptionsFlow):
             vol.Required("comparison_days", default=o.get("comparison_days", 30)): vol.In([7, 30, 90]),
             vol.Required("sewer_return_percent", default=o.get("sewer_return_percent", 95)): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
             vol.Required("auto_tariffs", default=o.get("auto_tariffs", True)): bool,
+            vol.Required("notifications_enabled", default=o.get("notifications_enabled", False)): bool,
+            vol.Required("phone_notify_service", default=selected): selector.SelectSelector(
+                selector.SelectSelectorConfig(options=[{"value": "none", "label": "Home Assistant only"}] +
+                    [{"value": name, "label": name.removeprefix("mobile_app_").replace("_", " ")} for name in services], mode="dropdown")),
+            vol.Optional("configure_monitoring", default=False): bool,
         }))
 
     async def async_step_custom(self, user_input=None):
@@ -78,7 +88,8 @@ class ComparisonOptionsFlow(config_entries.OptionsFlow):
                 if not finite(user_input.get(key), 0, maximum):
                     errors["base"] = "invalid_number"
             if not errors:
-                return self.async_create_entry(title="", data={**self.pending, **user_input})
+                self.pending.update(user_input)
+                return await self.async_finish_options()
         o = self.config_entry.options
         return self.async_show_form(step_id="custom", errors=errors, data_schema=vol.Schema({
             vol.Required("custom_supplier", default=o.get("custom_supplier", "")): str,
@@ -87,3 +98,29 @@ class ComparisonOptionsFlow(config_entries.OptionsFlow):
             vol.Required("custom_standing", default=o.get("custom_standing", 0)): vol.All(vol.Coerce(float), vol.Range(min=0, max=2000)),
             vol.Required("custom_valid_until", default=o.get("custom_valid_until", "")): selector.DateSelector(),
         }))
+
+    async def async_finish_options(self):
+        if self.edit_monitoring:
+            return await self.async_step_monitoring()
+        return self.async_create_entry(title="", data=self.pending)
+
+    async def async_step_monitoring(self, user_input=None):
+        errors = {}
+        bounds = {"flow_observation_lph": (0.1, 10000, 5), "sustained_minutes": (1, 1440, 60),
+                  "overnight_minutes": (1, 1440, 30), "offline_minutes": (1, 60, 5),
+                  "high_daily_min_litres": (1, 100000, 500), "high_daily_multiplier": (1, 20, 2),
+                  "scenario_usage_percent": (0, 100, 20), "scenario_tariff_percent": (0, 200, 10)}
+        if user_input is not None:
+            for key, (minimum, maximum, _) in bounds.items():
+                if not finite(user_input.get(key), minimum, maximum):
+                    errors["base"] = "invalid_number"
+            if user_input.get("night_start_hour") == user_input.get("night_end_hour"):
+                errors["base"] = "invalid_night_window"
+            if not errors:
+                return self.async_create_entry(title="", data={**self.pending, **user_input})
+        o = self.config_entry.options
+        fields = {vol.Required(k, default=o.get(k, default)): vol.All(vol.Coerce(float), vol.Range(min=low, max=high))
+                  for k, (low, high, default) in bounds.items()}
+        fields.update({vol.Required("night_start_hour", default=o.get("night_start_hour", 0)): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
+                       vol.Required("night_end_hour", default=o.get("night_end_hour", 6)): vol.All(vol.Coerce(int), vol.Range(min=0, max=23))})
+        return self.async_show_form(step_id="monitoring", errors=errors, data_schema=vol.Schema(fields))

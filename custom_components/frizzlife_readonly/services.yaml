@@ -1,0 +1,10 @@
+test_notifications:
+  name: Test water notifications
+  description: Send a clearly labelled test to this integration entry's configured HA and phone destinations. Sends no device commands.
+  fields:
+    entry_id:
+      name: Integration entry ID
+      required: true
+      selector:
+        config_entry:
+          integration: frizzlife_readonly

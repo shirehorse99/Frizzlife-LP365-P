@@ -55,14 +55,14 @@ def select_tariff(catalog, profile, today):
     }
 
 
-def complete_daily_usage(rows, now, days):
+def complete_daily_records(rows, now, days):
     """Require each expected hourly row; exclude today and the first observed date.
 
     This detects missing statistic hours, not all short monitoring gaps. Results
     remain estimates, particularly where the physical device was unavailable.
     """
     if not rows:
-        return []
+        return {}
     tz = now.tzinfo
     first_day = min(datetime.fromtimestamp(r["start"], tz).date() for r in rows)
     grouped = {}
@@ -73,15 +73,19 @@ def complete_daily_usage(rows, now, days):
             continue
         if finite(r.get("change")):
             grouped.setdefault(day, {})[r["start"]] = r["change"]
-    result = []
+    result = {}
     for day, values in sorted(grouped.items()):
         start = datetime.combine(day, datetime.min.time(), tz)
         end = datetime.combine(day + timedelta(days=1), datetime.min.time(), tz)
         expected = int((end.timestamp() - start.timestamp()) / 3600)
         expected_starts = {start.timestamp() + h * 3600 for h in range(expected)}
         if set(values) == expected_starts:
-            result.append(sum(values.values()))
+            result[day] = sum(values.values())
     return result
+
+
+def complete_daily_usage(rows, now, days):
+    return list(complete_daily_records(rows, now, days).values())
 
 
 def calculate(tariff, annual_bill, daily_m3, today_m3=None):

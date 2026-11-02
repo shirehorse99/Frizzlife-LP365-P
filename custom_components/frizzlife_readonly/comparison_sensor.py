@@ -23,6 +23,10 @@ SENSORS = {
     "sewer_rate": ("Metered sewerage unit rate", "GBP/m³"),
     "effective_rate": ("Metered combined effective rate", "GBP/m³"),
     "comparison_result": ("Meter comparison result", None),
+    "scenario_lower_usage": ("Metered cost with lower usage", "GBP"),
+    "scenario_higher_usage": ("Metered cost with higher usage", "GBP"),
+    "scenario_tariff_rise": ("Metered cost with tariff increase", "GBP"),
+    "scenario_rise_saving": ("Meter saving with tariff increase", "GBP"),
 }
 
 
@@ -59,5 +63,7 @@ class ComparisonSensor(CoordinatorEntity, SensorEntity):
         return {"tariff_source": tariff.get("source"),
                 "profile": self.coordinator.entry.options.get("tariff_profile", "welsh_standard"),
                 "sewer_return_percent": tariff.get("return_percent"),
+                "usage_scenario_percent": self.coordinator.entry.options.get("scenario_usage_percent", 20),
+                "tariff_scenario_percent": self.coordinator.entry.options.get("scenario_tariff_percent", 10),
                 "basis": "Recorded full hourly days, annualised to 365 days at current tariff; indicative only",
                 "tariff_updates": "Daily checks of maintained GitHub catalogue; no official live feed"}
