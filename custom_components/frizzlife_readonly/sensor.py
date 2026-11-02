@@ -27,6 +27,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 Reading(c, "last_poll", "Last successful local poll", device_class=SensorDeviceClass.TIMESTAMP)]
     if entry.data.get("pressure_factor"):
         entities.append(Reading(c, "pressure", "Water pressure", "psi", SensorDeviceClass.PRESSURE, SensorStateClass.MEASUREMENT))
+        entities.append(Reading(c, "pressure_bar", "Water pressure bar", "bar", SensorDeviceClass.PRESSURE, SensorStateClass.MEASUREMENT))
     if entry.data.get("verified_volume"):
         entities.extend([
             Reading(c, "water_today", "Water used today", "m³", SensorDeviceClass.WATER, SensorStateClass.TOTAL_INCREASING),
@@ -43,6 +44,9 @@ class Reading(MonitorEntity, SensorEntity):
         self._attr_native_unit_of_measurement = unit
         self._attr_device_class = device_class
         self._attr_state_class = state_class
+        if key in ("pressure", "pressure_bar"):
+            self._attr_suggested_unit_of_measurement = unit
+            self._attr_suggested_display_precision = 2
         if key in EXTRA_DIAGNOSTICS or key in ("pressure_raw", "measurement_units", "faults", "last_poll", "reported_104"):
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
         if key == "water_today":

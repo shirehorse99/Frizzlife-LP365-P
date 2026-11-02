@@ -1,6 +1,6 @@
 # FrizzLife LP365-P — read-only Home Assistant integration
 
-Trial version 0.2.0, tested with Home Assistant 2026.10.4 and one LP365-P using local protocol 3.5. Local authentication, live entities, the four dashboard tabs and Energy water/flow source selection were verified. Multi-device and other firmware support remain untested.
+Trial version 0.2.1, tested with Home Assistant 2026.10.4 and one LP365-P using local protocol 3.5. Local authentication, live entities, the four dashboard tabs and Energy water/flow source selection were verified. Multi-device and other firmware support remain untested.
 
 Provides native sensor and binary sensor entities, plus a reusable four-tab Lovelace dashboard: Overview, Usage, Diagnostics and Meter comparison. No control entities, services, valve commands, protection changes or resets. Polls every 30 seconds using local Tuya status queries. Phone apps or another local integration may compete for the device's single connection.
 
@@ -60,3 +60,5 @@ These are indicative current-tariff projections over 365 days, not supplier quot
 Automatic updates check the **maintained JSON catalogue in this repository** daily using a public GET, and cache valid rates locally. This is not an official live supplier API or automatic PDF scraping: catalogue maintainers must publish verified tariff changes. No usage or bill amounts are uploaded. Only dated, bounded rates with an allowed official source are accepted. Current valid cached/bundled rates can survive a failed check; expired tariffs produce no monetary estimates. Custom supplier rates are manual. Rates and update status are visible on the dashboard.
 
 Welsh Water 2026–27 tariff source: [household scheme of charges](https://corporate.dwrcymru.com/-/media/project/files/page-documents/corporate/library/our-charges/scheme-of-charges/scheme-of-charges-2026-2027.ashx). Calculation is cross-checked against the supplier’s [52 m³/year metered example](https://www.dwrcymru.com/en/help-advice/water-meters/switching-to-a-water-meter).
+
+Pressure is exposed simultaneously in psi and bar, with two live dashboard rows. Version 0.2.1 also uses serialisable standard numeric form validators, with finite-value checks on submission.

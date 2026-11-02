@@ -1,7 +1,7 @@
 /* Registry-based native Lovelace dashboard. No service calls or valve controls. */
 (() => {
   const domain = 'frizzlife_readonly';
-  const labels = {pressure:'Water pressure',flow:'Live flow',water_today:'Water used today',
+  const labels = {pressure:'Water pressure · psi',pressure_bar:'Water pressure · bar',flow:'Live flow',water_today:'Water used today',
     reported_104:'DP104 raw reading',valve_position:'Valve position',protection:'Protection',
     leak_warning:'Leak warning',leak_alarm:'Leak alarm',faults:'Reported fault bitmap',
     pressure_raw:'Pressure raw reading',measurement_units:'Reported measurement units',last_poll:'Last successful local poll',
@@ -39,7 +39,7 @@
         const name = device.name_by_user || device.name || 'Water monitor';
         const overview = [
           {type:'markdown',content:`# ${name}\nLocal water readings · LP365-P`},
-          group('Live readings',['pressure','flow','water_today']),
+          group('Live readings',['pressure','pressure_bar','flow','water_today']),
           group('Monitor status',['valve_position','protection','leak_warning','leak_alarm']),
           history('Pressure · last 24 hours',['pressure']),history('Flow · last 24 hours',['flow'])];
         const usage = [{type:'markdown',content:'## Water usage\nThe device reports a daily counter, which resets at midnight. Home Assistant records its increases across resets. Select **Water used today** as the water source in Energy. History starts when Recorder first sees this entity; previous app history is not imported.'},

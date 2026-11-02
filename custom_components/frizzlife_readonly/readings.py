@@ -46,9 +46,12 @@ def decode(dps, key, pressure_factor=None):
         return number(dps, 15)
     if key == "reported_104":
         return number(dps, 104)
-    if key == "pressure":
+    if key in ("pressure", "pressure_bar"):
         value = number(dps, 15)
-        return value * pressure_factor if value is not None and pressure_factor else None
+        if value is None or not pressure_factor:
+            return None
+        psi = value * pressure_factor
+        return psi * 0.06894757293168 if key == "pressure_bar" else psi
     if key in ("water_today", "flow"):
         units = dps.get("102")
         if units not in ("metric_unit", "us_units"):

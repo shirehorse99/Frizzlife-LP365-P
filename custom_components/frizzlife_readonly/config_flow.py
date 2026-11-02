@@ -10,15 +10,6 @@ from .comparison import finite
 from homeassistant.util import dt as dt_util
 
 
-def bounded_number(maximum):
-    def validate(value):
-        value = vol.Coerce(float)(value)
-        if not finite(value, 0, maximum):
-            raise vol.Invalid("Enter a finite non-negative number")
-        return value
-    return validate
-
-
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
@@ -53,19 +44,24 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class ComparisonOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
+        errors = {}
         if user_input is not None:
-            self.pending = {**self.config_entry.options, **user_input}
-            if user_input["tariff_profile"] == "custom":
-                return await self.async_step_custom()
-            return self.async_create_entry(title="", data=self.pending)
+            for key, maximum in (("annual_unmetered_bill", 100000), ("sewer_return_percent", 100)):
+                if not finite(user_input.get(key), 0, maximum):
+                    errors["base"] = "invalid_number"
+            if not errors:
+                self.pending = {**self.config_entry.options, **user_input}
+                if user_input["tariff_profile"] == "custom":
+                    return await self.async_step_custom()
+                return self.async_create_entry(title="", data=self.pending)
         o = self.config_entry.options
-        return self.async_show_form(step_id="init", data_schema=vol.Schema({
+        return self.async_show_form(step_id="init", errors=errors, data_schema=vol.Schema({
             vol.Required("comparison_enabled", default=o.get("comparison_enabled", False)): bool,
             vol.Required("tariff_profile", default=o.get("tariff_profile", "welsh_standard")): selector.SelectSelector(
                 selector.SelectSelectorConfig(options=[{"value": k, "label": v} for k, v in PROFILES.items()], mode="dropdown")),
-            vol.Required("annual_unmetered_bill", default=o.get("annual_unmetered_bill", 0)): bounded_number(100000),
+            vol.Required("annual_unmetered_bill", default=o.get("annual_unmetered_bill", 0)): vol.All(vol.Coerce(float), vol.Range(min=0, max=100000)),
             vol.Required("comparison_days", default=o.get("comparison_days", 30)): vol.In([7, 30, 90]),
-            vol.Required("sewer_return_percent", default=o.get("sewer_return_percent", 95)): bounded_number(100),
+            vol.Required("sewer_return_percent", default=o.get("sewer_return_percent", 95)): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
             vol.Required("auto_tariffs", default=o.get("auto_tariffs", True)): bool,
         }))
 
@@ -78,13 +74,16 @@ class ComparisonOptionsFlow(config_entries.OptionsFlow):
                     raise ValueError
             except (TypeError, ValueError):
                 errors["base"] = "invalid_tariff_date"
-            else:
+            for key, maximum in (("custom_water_rate", 20), ("custom_sewer_rate", 20), ("custom_standing", 2000)):
+                if not finite(user_input.get(key), 0, maximum):
+                    errors["base"] = "invalid_number"
+            if not errors:
                 return self.async_create_entry(title="", data={**self.pending, **user_input})
         o = self.config_entry.options
         return self.async_show_form(step_id="custom", errors=errors, data_schema=vol.Schema({
             vol.Required("custom_supplier", default=o.get("custom_supplier", "")): str,
-            vol.Required("custom_water_rate", default=o.get("custom_water_rate", 0)): bounded_number(20),
-            vol.Required("custom_sewer_rate", default=o.get("custom_sewer_rate", 0)): bounded_number(20),
-            vol.Required("custom_standing", default=o.get("custom_standing", 0)): bounded_number(2000),
+            vol.Required("custom_water_rate", default=o.get("custom_water_rate", 0)): vol.All(vol.Coerce(float), vol.Range(min=0, max=20)),
+            vol.Required("custom_sewer_rate", default=o.get("custom_sewer_rate", 0)): vol.All(vol.Coerce(float), vol.Range(min=0, max=20)),
+            vol.Required("custom_standing", default=o.get("custom_standing", 0)): vol.All(vol.Coerce(float), vol.Range(min=0, max=2000)),
             vol.Required("custom_valid_until", default=o.get("custom_valid_until", "")): selector.DateSelector(),
         }))

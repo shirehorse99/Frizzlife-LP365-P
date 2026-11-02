@@ -50,7 +50,8 @@
       }
     },
     "error": {
-      "invalid_tariff_date": "Enter a current or future tariff end date."
+      "invalid_tariff_date": "Enter a current or future tariff end date.",
+      "invalid_number": "Enter finite, non-negative amounts within the stated limits."
     }
   }
 }

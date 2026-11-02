@@ -25,6 +25,9 @@ class ReadingsTests(unittest.TestCase):
         self.assertEqual(r.decode(dps,'reported_104'),44)
         self.assertIsNone(r.decode(dps,'water_yesterday'))
         self.assertEqual(r.decode(dps,'pressure',0.1),45.6)
+        self.assertAlmostEqual(r.decode(dps,'pressure_bar',0.1),3.144009325684608)
+        self.assertIsNone(r.decode({},'pressure_bar',0.1))
+        self.assertIsNone(r.decode(dps,'pressure_bar'))
         self.assertEqual(r.decode(dps,'flow'),0)
 
     def test_us_gallons_normalise_to_same_metric_quantity(self):
