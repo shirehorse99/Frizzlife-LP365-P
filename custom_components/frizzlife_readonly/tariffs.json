@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "tariffs": [
+    {
+      "id": "welsh_water",
+      "provider": "Dŵr Cymru Welsh Water",
+      "valid_from": "2026-04-01",
+      "valid_until": "2027-03-31",
+      "water_per_m3": 1.9527,
+      "sewer_per_m3": 2.7418,
+      "water_standing_annual": 58.63,
+      "sewer_standing_annual": 151.74,
+      "foul_only_standing_annual": 105.87,
+      "sewer_return_percent": 95,
+      "source": "https://corporate.dwrcymru.com/-/media/project/files/page-documents/corporate/library/our-charges/scheme-of-charges/scheme-of-charges-2026-2027.ashx"
+    }
+  ]
+}

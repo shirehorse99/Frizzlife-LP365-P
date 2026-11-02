@@ -1,12 +1,56 @@
 {
   "title": "FrizzLife Water Monitor (read only)",
   "config": {
-    "step": {"user": {
-      "title": "Connect to a local LP365-P",
-      "description": "Reads local status only. Close phone apps while connecting. Confirm volume scaling against your app before enabling consumption and flow entities. Set pressure multiplier to 0 to show only its raw reading; 0.1 converts this verified LP365-P firmware's reading to psi.",
-      "data": {"host": "Monitor IP address", "device_id": "Device / Virtual ID", "local_key": "Tuya local key", "protocol": "Local protocol version", "verified_volume": "I have verified volume units and scaling against the app", "pressure_factor": "Raw pressure to psi multiplier (0 disables pressure entity)"}
-    }},
-    "error": {"invalid_key": "Use the 16-byte local encryption key, not the Virtual ID.", "cannot_connect": "No valid local status response. Check IP, key and protocol, and close other local connections."},
-    "abort": {"already_configured": "This monitor is already configured."}
+    "step": {
+      "user": {
+        "title": "Connect to a local LP365-P",
+        "description": "Reads local status only. Close phone apps while connecting. Confirm volume scaling against your app before enabling consumption and flow entities. Set pressure multiplier to 0 to show only its raw reading; 0.1 converts this verified LP365-P firmware's reading to psi.",
+        "data": {
+          "host": "Monitor IP address",
+          "device_id": "Device / Virtual ID",
+          "local_key": "Tuya local key",
+          "protocol": "Local protocol version",
+          "verified_volume": "I have verified volume units and scaling against the app",
+          "pressure_factor": "Raw pressure to psi multiplier (0 disables pressure entity)"
+        }
+      }
+    },
+    "error": {
+      "invalid_key": "Use the 16-byte local encryption key, not the Virtual ID.",
+      "cannot_connect": "No valid local status response. Check IP, key and protocol, and close other local connections."
+    },
+    "abort": {
+      "already_configured": "This monitor is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Water meter cost comparison",
+        "description": "Indicative household comparison using recorded full days. Enter your actual annual unmetered bill; 0 means unknown. Welsh Water presets are for standard household tariffs. Only choose the surface-water rebate if it has been approved. Automatic updates check the maintained GitHub tariff catalogue daily, not a supplier live feed. Custom suppliers require manual rates. Missing or expired tariffs never produce estimates.",
+        "data": {
+          "comparison_enabled": "Enable meter cost comparison",
+          "tariff_profile": "Region / supplier and tariff",
+          "annual_unmetered_bill": "Current annual unmetered bill (£; 0 if unknown)",
+          "comparison_days": "Usage look-back window (days)",
+          "sewer_return_percent": "Water returned to sewer (%)",
+          "auto_tariffs": "Check maintained tariff catalogue daily"
+        }
+      },
+      "custom": {
+        "title": "Custom region / supplier tariff",
+        "description": "Enter standard household rates from your supplier’s dated bill or tariff. These custom rates are manual and do not update automatically. Standing charge must be the combined annual water/sewerage charge.",
+        "data": {
+          "custom_supplier": "Region / supplier name",
+          "custom_water_rate": "Water (£ per m³)",
+          "custom_sewer_rate": "Sewerage (£ per m³ before return allowance)",
+          "custom_standing": "Combined standing charge (£ per year)",
+          "custom_valid_until": "Tariff valid until"
+        }
+      }
+    },
+    "error": {
+      "invalid_tariff_date": "Enter a current or future tariff end date."
+    }
   }
 }

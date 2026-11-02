@@ -15,7 +15,7 @@ vm.runInNewContext(fs.readFileSync('custom_components/frizzlife_readonly/fronten
      {device_id:'monitor1',unique_id:'abc_123_pressure',entity_id:'sensor.hidden',hidden_by:'user'},
      {device_id:'monitor1',unique_id:'abc_123_switch',entity_id:'switch.valve'}]};
   const config=await strategy.generate({},hass);
-  assert.equal(config.views.length,3);
+  assert.equal(config.views.length,4);
   const data=JSON.stringify(config);
   assert(data.includes('sensor.renamed_usage'));
   assert(data.includes('binary_sensor.hardware_fault'));

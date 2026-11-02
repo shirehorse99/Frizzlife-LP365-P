@@ -1,8 +1,8 @@
 # FrizzLife LP365-P — read-only Home Assistant integration
 
-Trial version 0.1.2, tested with Home Assistant 2026.10.4 and one LP365-P using local protocol 3.5. Local authentication, live entities, the three dashboard tabs and Energy water/flow source selection were verified. Multi-device and other firmware support remain untested.
+Trial version 0.2.0, tested with Home Assistant 2026.10.4 and one LP365-P using local protocol 3.5. Local authentication, live entities, the four dashboard tabs and Energy water/flow source selection were verified. Multi-device and other firmware support remain untested.
 
-Provides native sensor and binary sensor entities, plus a reusable three-tab Lovelace dashboard: Overview, Usage and Diagnostics. No control entities, services, valve commands, protection changes or resets. Polls every 30 seconds using local Tuya status queries. Phone apps or another local integration may compete for the device's single connection.
+Provides native sensor and binary sensor entities, plus a reusable four-tab Lovelace dashboard: Overview, Usage, Diagnostics and Meter comparison. No control entities, services, valve commands, protection changes or resets. Polls every 30 seconds using local Tuya status queries. Phone apps or another local integration may compete for the device's single connection.
 
 ## Installation
 
@@ -48,3 +48,15 @@ Sources: [FrizzLife support](https://www.frizzlife.com/pages/lp365-support), [Ho
 ## Community cross-check
 
 [LP365 community discussion](https://community.home-assistant.io/t/frizzlife-smart-water-monitor/875335?page=2) confirms pressure /10 psi and today usage /10 L, and reports incorrect cloud naming for DP104. DP104 is therefore exposed only as a raw diagnostic, with no unit or claimed meaning. Live flow is /1000 L/h, confirmed by the user’s Smart Life display. Earlier example YAML in the thread misclassifies volume as flow rate; this integration uses water / total_increasing for Energy.
+
+## Metered versus unmetered comparison
+
+In the integration’s options, enable **Water meter cost comparison**, select a region/supplier tariff and enter your current annual unmetered bill when known (0 means unknown). The presets currently cover standard Welsh Water household water and sewerage, an approved surface-water rebate, and water only. Other regions/suppliers use custom manual rates and an expiry date; there is no claim of automatic national supplier coverage.
+
+Sensors expose the tariff, annual standing charge, today’s indicative metered cost, full days included, average daily usage, annualised volume, estimated annual/monthly metered cost, annual saving, and break-even litres/day. The first recorded date, today, and dates missing expected hourly Recorder statistics are excluded. DST days use their actual 23/25 hours. Estimates begin with one complete recorded day; the comparison result needs seven. A positive saving means the metered estimate is lower. Unknown bills leave saving/break-even unavailable. Recorder and verified volume readings are required. Short monitoring gaps may still affect estimates; the monitor must measure the whole household supply. Seasonal use needs a representative longer sample.
+
+These are indicative current-tariff projections over 365 days, not supplier quotes or forecasts of future tariffs. The default Welsh Water sewer-return factor is 95%; very low-volume billing, social tariffs, discounts, and individually approved allowances can differ. Changing the return factor affects only the estimate. Comparison entities are not billing controls or Energy cost configuration.
+
+Automatic updates check the **maintained JSON catalogue in this repository** daily using a public GET, and cache valid rates locally. This is not an official live supplier API or automatic PDF scraping: catalogue maintainers must publish verified tariff changes. No usage or bill amounts are uploaded. Only dated, bounded rates with an allowed official source are accepted. Current valid cached/bundled rates can survive a failed check; expired tariffs produce no monetary estimates. Custom supplier rates are manual. Rates and update status are visible on the dashboard.
+
+Welsh Water 2026–27 tariff source: [household scheme of charges](https://corporate.dwrcymru.com/-/media/project/files/page-documents/corporate/library/our-charges/scheme-of-charges/scheme-of-charges-2026-2027.ashx). Calculation is cross-checked against the supplier’s [52 m³/year metered example](https://www.dwrcymru.com/en/help-advice/water-meters/switching-to-a-water-meter).

@@ -7,6 +7,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 from .const import DOMAIN, PLATFORMS
 from .protocol import read_status
+from .comparison_coordinator import ComparisonCoordinator
 
 
 class MonitorCoordinator(DataUpdateCoordinator):
@@ -31,6 +32,10 @@ async def async_setup_entry(hass, entry):
     coordinator = MonitorCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
+    coordinator.comparison = ComparisonCoordinator(hass, coordinator)
+    await coordinator.comparison.async_refresh()
+    entry.async_on_unload(coordinator.async_add_listener(coordinator.comparison.handle_monitor_update))
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     data = hass.data.setdefault(DOMAIN, {})
     async with data.setdefault("resource_lock", asyncio.Lock()):
         if not data.get("resource_registered"):
@@ -44,3 +49,7 @@ async def async_setup_entry(hass, entry):
 
 async def async_unload_entry(hass, entry):
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def _async_options_updated(hass, entry):
+    await hass.config_entries.async_reload(entry.entry_id)

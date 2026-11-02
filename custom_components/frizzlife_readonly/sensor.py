@@ -2,6 +2,7 @@
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
 from homeassistant.helpers.entity import EntityCategory
 from .entity import MonitorEntity
+from .comparison_sensor import ComparisonSensor, SENSORS as COMPARISON_SENSORS
 
 EXTRA_DIAGNOSTICS = {
     "mode_group": "Protection mode group",
@@ -32,6 +33,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             Reading(c, "flow", "Water flow", "L/h", SensorDeviceClass.VOLUME_FLOW_RATE, SensorStateClass.MEASUREMENT),
         ])
     entities.extend(Reading(c, key, name) for key, name in EXTRA_DIAGNOSTICS.items())
+    entities.extend(ComparisonSensor(c.comparison, key) for key in COMPARISON_SENSORS)
     async_add_entities(entities)
 
 

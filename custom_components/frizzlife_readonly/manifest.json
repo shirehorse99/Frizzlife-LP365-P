@@ -1,7 +1,8 @@
 {
   "domain": "frizzlife_readonly",
   "name": "FrizzLife Water Monitor (read only)",
-  "version": "0.1.2",
+  "version": "0.2.0",
+  "after_dependencies": ["recorder"],
   "config_flow": true,
   "iot_class": "local_polling",
   "requirements": [
