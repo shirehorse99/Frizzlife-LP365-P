@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+private/
+devices.json
+snapshot.json
+*.key
+outputs/

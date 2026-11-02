@@ -1,0 +1,15 @@
+{
+  "domain": "frizzlife_readonly",
+  "name": "FrizzLife Water Monitor (read only)",
+  "version": "0.1.1",
+  "config_flow": true,
+  "iot_class": "local_polling",
+  "requirements": [
+    "tinytuya==1.20.0"
+  ],
+  "codeowners": [
+    "@shirehorse99"
+  ],
+  "documentation": "https://github.com/shirehorse99/Frizzlife-LP365-P",
+  "issue_tracker": "https://github.com/shirehorse99/Frizzlife-LP365-P/issues"
+}

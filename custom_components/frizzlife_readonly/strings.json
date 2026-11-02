@@ -1,0 +1,12 @@
+{
+  "title": "FrizzLife Water Monitor (read only)",
+  "config": {
+    "step": {"user": {
+      "title": "Connect to a local LP365-P",
+      "description": "Reads local status only. Close phone apps while connecting. Confirm volume scaling against your app before enabling consumption and flow entities. Set pressure multiplier to 0 to show only its raw reading; 0.1 converts this verified LP365-P firmware's reading to psi.",
+      "data": {"host": "Monitor IP address", "device_id": "Device / Virtual ID", "local_key": "Tuya local key", "protocol": "Local protocol version", "verified_volume": "I have verified volume units and scaling against the app", "pressure_factor": "Raw pressure to psi multiplier (0 disables pressure entity)"}
+    }},
+    "error": {"invalid_key": "Use the 16-byte local encryption key, not the Virtual ID.", "cannot_connect": "No valid local status response. Check IP, key and protocol, and close other local connections."},
+    "abort": {"already_configured": "This monitor is already configured."}
+  }
+}
