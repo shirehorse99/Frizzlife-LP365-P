@@ -103,8 +103,8 @@ class ComparisonCoordinator(DataUpdateCoordinator):
                 midnight = dt_util.start_of_local_day(now)
                 window = options.get("comparison_days", 30)
                 rows = await get_instance(self.hass).async_add_executor_job(
-                    statistics_during_period, self.hass, midnight - timedelta(days=window + 2),
-                    midnight, {entity_id}, "hour", {"volume": "m³"}, {"change"})
+                    statistics_during_period, self.hass, dt_util.as_utc(midnight - timedelta(days=window + 2)),
+                    dt_util.as_utc(midnight), {entity_id}, "hour", {"volume": "m³"}, {"change"})
                 self.days = complete_daily_usage(rows.get(entity_id, []), now, window)
                 self.stats_status = "Recorded full hourly days" if self.days else "Waiting for full days"
             except Exception:
@@ -136,4 +136,7 @@ class ComparisonCoordinator(DataUpdateCoordinator):
 
     def handle_monitor_update(self):
         if self.entry.options.get("comparison_enabled", False) and self.entry.data.get("verified_volume", False) and self.data is not None:
-            self.async_set_updated_data(self._values())
+            # Preserve the hourly statistics/tariff refresh deadline. Calling
+            # async_set_updated_data every 30 seconds would postpone it forever.
+            self.data = self._values()
+            self.async_update_listeners()
