@@ -4,7 +4,15 @@
   const labels = {pressure:'Water pressure',flow:'Live flow',water_today:'Water used today',
     reported_104:'DP104 raw reading',valve_position:'Valve position',protection:'Protection',
     leak_warning:'Leak warning',leak_alarm:'Leak alarm',faults:'Reported fault bitmap',
-    pressure_raw:'Pressure raw reading',measurement_units:'Reported measurement units',last_poll:'Last successful local poll'};
+    pressure_raw:'Pressure raw reading',measurement_units:'Reported measurement units',last_poll:'Last successful local poll',
+    mode_group:'Protection mode group',smart_mode:'Configured smart mode',pro_mode:'Configured pro mode',
+    low_flow_enabled:'Low-flow protection enabled',low_flow_code:'Low-flow threshold code',
+    mode4_time_raw:'Mode 4 alarm time raw',mode5_time_raw:'Mode 5 alarm time raw',mode6_time_raw:'Mode 6 alarm time raw',
+    mode4_flow_code:'Mode 4 flow threshold code',mode5_flow_code:'Mode 5 flow threshold code',mode6_flow_code:'Mode 6 flow threshold code',
+    fault_power:'Power failure',fault_empty_pipe:'Empty pipe',fault_backflow:'Reverse flow',fault_overrange:'Over-range fault',
+    fault_temperature:'Temperature fault',fault_hardware:'Hardware fault',fault_valve_stuck:'Stuck valve',
+    leak_duration_raw:'Leak-event duration raw',leak_volume_raw:'Leak-event volume raw',
+    warning_duration_raw:'Warning-event duration raw',warning_volume_raw:'Warning-event volume raw',test_remaining_raw:'Test remaining time raw'};
   class FrizzlifeStrategy extends HTMLElement {
     static async generate(config, hass) {
       const [devices, entities] = await Promise.all([
@@ -32,6 +40,10 @@
         if (map.water_today) usage.push({type:'statistics-graph',title:'Daily water use · 14 days',
           chart_type:'bar',period:'day',days_to_show:14,stat_types:['change'],entities:[map.water_today]});
         const diagnostic = [group('Reported device data',['last_poll','pressure_raw','measurement_units','faults','reported_104']),
+          group('Reported fault flags',['fault_power','fault_empty_pipe','fault_backflow','fault_overrange','fault_temperature','fault_hardware','fault_valve_stuck']),
+          group('Protection configuration',['mode_group','smart_mode','pro_mode','low_flow_enabled','low_flow_code','mode4_time_raw','mode5_time_raw','mode6_time_raw','mode4_flow_code','mode5_flow_code','mode6_flow_code']),
+          group('Unverified event and test readings',['leak_duration_raw','leak_volume_raw','warning_duration_raw','warning_volume_raw','test_remaining_raw']),
+          {type:'markdown',content:'Protection settings are displayed as reported, with no controls. Mode numbers and threshold codes have no assumed physical meaning. Raw event/time values have unverified units and may be retained or inactive values. Fault names follow the vendor bitmap; a temperature fault flag does not imply this pressure model has a working temperature sensor.'},
           {type:'markdown',content:'This integration reads local status every 30 seconds. It provides no valve, reset, pairing or protection commands. Missing readings are unavailable. The raw fault bitmap is zero when the monitor reports no fault bits.'}];
         for (const [title,cards,icon] of [['Overview',overview,'mdi:water'],['Usage',usage,'mdi:chart-bar'],['Diagnostics',diagnostic,'mdi:information-outline']])
           views.push({title:`${name} · ${title}`,path:`${device.id}-${title.toLowerCase()}`,icon,cards});

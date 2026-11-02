@@ -1,6 +1,6 @@
 # FrizzLife LP365-P — read-only Home Assistant integration
 
-Trial version 0.1.1, tested with Home Assistant 2026.10.4 and one LP365-P using local protocol 3.5. Local authentication, live entities, the three dashboard tabs and Energy water/flow source selection were verified. Multi-device and other firmware support remain untested.
+Trial version 0.1.2, tested with Home Assistant 2026.10.4 and one LP365-P using local protocol 3.5. Local authentication, live entities, the three dashboard tabs and Energy water/flow source selection were verified. Multi-device and other firmware support remain untested.
 
 Provides native sensor and binary sensor entities, plus a reusable three-tab Lovelace dashboard: Overview, Usage and Diagnostics. No control entities, services, valve commands, protection changes or resets. Polls every 30 seconds using local Tuya status queries. Phone apps or another local integration may compete for the device's single connection.
 
@@ -29,9 +29,13 @@ strategy:
 
 The strategy discovers entities through HA's registries, so entity renames work and no personal entity IDs appear in the layout. Only sensor/binary sensor domains are selected. No frontend framework or extra card plugins are required.
 
+## Extra read-only diagnostics
+
+Version 0.1.2 adds seven fault flags decoded from the vendor bitmap (power, empty pipe, backflow, over-range, temperature, hardware and stuck valve), configured protection modes, low-flow protection status, alarm-time raw values and flow-threshold codes. Leak/warning event duration and volume, plus test remaining time, are exposed as raw diagnostics with no assumed units or active-event meaning. Some values may remain from earlier events or inactive settings. These are grouped on the Diagnostics tab. No settings can be changed through the integration. A reported temperature fault flag does not establish a working temperature sensor on the pressure model.
+
 ## Verification and limitations
 
-Run `.venv/bin/python -m unittest discover -s tests -v`. The tests cover verified counter conversion, unit switching, invalid/missing values, daily reset handling, command rejection and connection cleanup. Also run `node tests/test_dashboard.cjs` for registry discovery and graph configuration checks. A live HA trial verified setup after restart, repeated polling, pressure in psi, flow in L/h, consumption in litres, the rendered Overview/Usage/Diagnostics tabs, and Energy selection. History graphs need time to accumulate. HACS/hassfest validation is not claimed as passed.
+Run `.venv/bin/python -m unittest discover -s tests -v`. The tests cover verified counter conversion, unit switching, invalid/missing values, daily reset handling, individual fault bits, extra diagnostic validation, command rejection and connection cleanup. Also run `node tests/test_dashboard.cjs` for registry discovery and graph configuration checks. A live HA trial verified setup after restart, repeated polling, pressure in psi, flow in L/h, consumption in litres, the rendered Overview/Usage/Diagnostics tabs, and Energy selection. History graphs need time to accumulate. HACS/hassfest validation is not claimed as passed.
 
 The integration uses only status queries (including required session authentication). It rejects TinyTuya's device22 control-opcode fallback rather than silently sending it. Missing datapoints are unavailable; unsuccessful polls make entities unavailable. A successful poll means the device answered, not that its physical sensors sampled at that instant. Fault bitmap zero means only that the monitor reported no fault flags.
 

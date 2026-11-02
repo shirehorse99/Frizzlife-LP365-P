@@ -44,6 +44,26 @@ class ReadingsTests(unittest.TestCase):
         self.assertEqual(r.decode({'102':'metric_unit','103':0},'water_today'),0)
         self.assertIsNone(r.decode({},'water_today'))
 
+    def test_fault_flags_decode_independently_and_reject_invalid_bitmaps(self):
+        for key, bit in r.FAULT_BITS.items():
+            for active_bit in range(7):
+                self.assertEqual(r.decode({'24':1 << active_bit},key),bit == active_bit)
+            self.assertFalse(r.decode({'24':0},key))
+            for value in (None,True,-1,'1',1.0):
+                self.assertIsNone(r.decode({'24':value},key))
+
+    def test_extra_diagnostics_keep_codes_and_values_unscaled(self):
+        dps={'109':'AUTO','110':'mode2','111':'mode4','112':10,'115':'2','118':True,'119':'9','121':82,'122':243,'127':300}
+        for key, expected in {'mode_group':'Automatic','smart_mode':'Mode 2','pro_mode':'Mode 4',
+                              'mode4_time_raw':10,'mode4_flow_code':'2','low_flow_enabled':True,
+                              'low_flow_code':'9','leak_duration_raw':82,'leak_volume_raw':243,'test_remaining_raw':300}.items():
+            self.assertEqual(r.decode(dps,key),expected)
+            self.assertIsNone(r.decode({},key))
+        for key, dp, invalid in [('mode_group','109',[]),('smart_mode','110','mode4'),
+                                  ('pro_mode','111','mode1'),('mode4_flow_code','115','27'),
+                                  ('low_flow_code','119','10'),('low_flow_enabled','118',1)]:
+            self.assertIsNone(r.decode({dp:invalid},key))
+
     def test_status_queries_only(self):
         device = p.ReadOnlyDevice('test-device','127.0.0.1','0123456789abcdef',version=3.3)
         self.assertEqual(device.generate_payload(p.commands.DP_QUERY).cmd,p.commands.DP_QUERY)
