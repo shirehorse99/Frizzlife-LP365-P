@@ -34,6 +34,16 @@
     overnight_flow:'Night flow pattern',high_daily_use:'High daily usage pattern',high_daily_threshold:'Daily usage threshold',
     scenario_lower_usage:'Lower usage · annual cost',scenario_higher_usage:'Higher usage · annual cost',
     scenario_tariff_rise:'Tariff rise · annual cost',scenario_rise_saving:'Tariff rise · annual saving'};
+  Object.assign(labels, Object.fromEntries(Object.entries({
+    daily_target_litres:'Daily target',flow_observation_lph:'Flow threshold',sustained_minutes:'Flow duration',
+    overnight_minutes:'Night duration',night_start_hour:'Night starts (h)',night_end_hour:'Night ends (h)',
+    offline_minutes:'Outage delay',high_daily_min_litres:'Daily minimum',high_daily_multiplier:'Daily multiplier',
+    pressure_low_bar:'Low pressure',pressure_high_bar:'High pressure',pressure_alert_minutes:'Pressure duration',
+    annual_unmetered_bill:'Annual fixed bill',sewer_return_percent:'Sewer return',scenario_usage_percent:'Usage change',
+    scenario_tariff_percent:'Tariff rise',notifications_enabled:'Notifications',phone_notify_service:'Alert phone',
+    pressure_alerts_enabled:'Pressure alerts',comparison_enabled:'Meter comparison',comparison_days:'History window',
+    auto_tariffs:'Tariff updates',device_controls_enabled:'Allow valve commands'
+  }).map(([key,value])=>['setting_'+key,value])));
   class FrizzlifeStrategy extends HTMLElement {
     static async generate(config, hass) {
       const [devices, entities] = await Promise.all([
