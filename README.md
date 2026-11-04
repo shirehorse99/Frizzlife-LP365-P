@@ -18,7 +18,7 @@ Do not add another derivative alongside this source, as that double-counts water
 
 ## MVHR-style dashboard
 
-1. Add `/frizzlife_readonly/dashboard.js` as a **JavaScript module** under Settings → Dashboards → Resources (advanced mode may be required).
+1. Add `/frizzlife_readonly/dashboard.js?v=0.4.0` as a **JavaScript module** under Settings → Dashboards → Resources (advanced mode may be required).
 2. Create a new blank dashboard and take control of it.
 3. In its raw configuration editor enter:
 
