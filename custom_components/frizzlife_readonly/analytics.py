@@ -50,3 +50,21 @@ def scenarios(tariff, average_litres, bill, options):
     if finite(bill, .01):
         result["scenario_rise_saving"] = bill - result["scenario_tariff_rise"]
     return result
+
+
+def night_consumption(rows, now, options):
+    """Recorded completed hours today; retain a completeness count, never fill gaps."""
+    start, end = int(options.get("night_start_hour", 0)), int(options.get("night_end_hour", 6))
+    hours = {h for h in range(now.hour) if (start <= h < end if start < end else h >= start or h < end)}
+    selected = {}
+    for row in rows:
+        at = row.get("start")
+        if not finite(at, 0, 4102444800):
+            continue
+        at = datetime.fromtimestamp(at, now.tzinfo)
+        if at.date() == now.date() and at.hour in hours and finite(row.get("change")):
+            selected[at.timestamp()] = row["change"]
+    result = {"night_water_hours": len(selected), "night_water_status": "Completed Recorder hours only; current hour excluded; gaps may omit use"}
+    if selected:
+        result["night_water_recorded"] = sum(selected.values()) * 1000
+    return result

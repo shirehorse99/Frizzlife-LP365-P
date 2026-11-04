@@ -5,6 +5,15 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from .const import DOMAIN
 
 SENSORS = {
+    "yesterday_same_time": ("Yesterday at this time (approximate)", "L"),
+    "same_time_difference": ("Usage difference versus yesterday at this time", "L"),
+    "night_water_recorded": ("Recorded night water today (completed hours)", "L"),
+    "night_water_hours": ("Recorded night hours today", "h"),
+    "night_water_status": ("Night consumption basis", None),
+    "last_supervised_test": ("Last user-recorded supervised test", None),
+    "test_due": ("Supervised test reminder due", None),
+    "maintenance_status": ("Water monitor maintenance", None),
+    "manual_controls_status": ("Manual valve controls", None),
     "water_yesterday": ("Usable recorded water yesterday", "L"),
     "recorded_week": ("Recorded water this week", "L"), "recorded_month": ("Recorded water this month", "L"),
     "average_7": ("Usable 7-day average water", "L/d"), "average_30": ("Usable 30-day average water", "L/d"),
@@ -42,7 +51,7 @@ class AnalyticsSensor(CoordinatorEntity, SensorEntity):
         if self._attr_native_unit_of_measurement == "bar":
             self._attr_device_class = SensorDeviceClass.PRESSURE
             self._attr_suggested_unit_of_measurement = "bar"
-        if key == "last_notification_time":
+        if key in ("last_notification_time", "last_supervised_test", "test_due"):
             self._attr_device_class = SensorDeviceClass.TIMESTAMP
 
     @property
@@ -62,7 +71,10 @@ class AnalyticsSensor(CoordinatorEntity, SensorEntity):
                   "flow_threshold_lph": o.get("flow_observation_lph", 5),
                   "sustained_minutes": o.get("sustained_minutes", 60), "overnight_minutes": o.get("overnight_minutes", 30),
                   "night_start_hour": o.get("night_start_hour", 0), "night_end_hour": o.get("night_end_hour", 6),
-                  "physical_shutoff_tested": False}
+                  "physical_shutoff_tested": "Not independently verified",
+                  "pressure_low_bar": o.get("pressure_low_bar", 1), "pressure_high_bar": o.get("pressure_high_bar", 6),
+                  "pressure_alert_minutes": o.get("pressure_alert_minutes", 5),
+                  "same_time_resolution_minutes": 5}
         if self.key.startswith("last_notification") or self.key == "notification_status":
             result["recent_messages"] = self.coordinator.monitor.notifications.history
         return result

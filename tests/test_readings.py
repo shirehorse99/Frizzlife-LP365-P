@@ -16,6 +16,7 @@ def load(name):
 
 r = load('readings')
 p = load('protocol')
+m = load('manual_control')
 
 
 class ReadingsTests(unittest.TestCase):
@@ -66,6 +67,25 @@ class ReadingsTests(unittest.TestCase):
                                   ('pro_mode','111','mode1'),('mode4_flow_code','115','27'),
                                   ('low_flow_code','119','10'),('low_flow_enabled','118',1)]:
             self.assertIsNone(r.decode({dp:invalid},key))
+
+    def test_manual_valve_guards_and_command_whitelist(self):
+        for enabled, confirmed, online, current in [(False,True,True,'Open'),(True,False,True,'Open'),(True,True,False,'Open'),(True,True,True,None)]:
+            with self.assertRaises(ValueError):
+                m.validate_manual_request(enabled, confirmed, online, current, 'Closed')
+        self.assertFalse(m.validate_manual_request(True,True,True,'Open','Open'))
+        self.assertTrue(m.validate_manual_request(True,True,True,'Open','Closed'))
+        device = m.ManualValveDevice('test','127.0.0.1','0123456789abcdef',version=3.3)
+        payload = device.generate_payload(p.commands.CONTROL, {'1':False})
+        self.assertIn(b'"1":false', payload.payload)
+        for data in ({'101':False},{'1':1},{'1':True,'101':True},None):
+            with self.assertRaises(ValueError): device.generate_payload(p.commands.CONTROL,data)
+        for command in (p.commands.DP_QUERY,p.commands.UPDATEDPS,p.commands.AP_CONFIG):
+            with self.assertRaises(ValueError): device.generate_payload(command,{'1':False})
+        with patch.object(m,'ManualValveDevice') as cls:
+            cls.return_value.set_value.return_value = {'Error':'offline'}
+            with self.assertRaises(ValueError): m.set_manual_valve({'host':'127.0.0.1','device_id':'test','local_key':'test'},False)
+            cls.return_value.set_value.assert_called_once_with('1',False)
+            cls.return_value.close.assert_called_once()
 
     def test_status_queries_only(self):
         device = p.ReadOnlyDevice('test-device','127.0.0.1','0123456789abcdef',version=3.3)

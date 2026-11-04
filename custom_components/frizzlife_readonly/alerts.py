@@ -1,6 +1,8 @@
 """Notification transitions only. This module never commands the water valve."""
 
 EVENTS = {
+    "pressure_low": ("Sustained low water pressure", "Pressure has stayed below your configured bar limit for the configured duration. This is an observation and does not operate the valve."),
+    "pressure_high": ("Sustained high water pressure", "Pressure has stayed above your configured bar limit for the configured duration. Check the pressure history; this does not operate the valve."),
     "device_leak_alarm": ("Device leak alarm", "The monitor reports a leak alarm. Check the property and the reported valve position; closure has not been physically verified."),
     "device_leak_warning": ("Device leak warning", "The monitor reports a leak warning. Investigate water use and check its app."),
     "protection_disabled": ("Leak protection disabled", "The monitor reports that its own leak protection is disabled. Check its app or panel."),

@@ -5,6 +5,10 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from .const import DOMAIN
 
 SENSORS = {
+    "daily_target": ("Daily water target", "L"),
+    "daily_target_progress": ("Daily water target used", "%"),
+    "daily_target_remaining": ("Water remaining against daily target", "L"),
+    "target_basis": ("Daily target basis", None),
     "comparison_status": ("Meter comparison status", None),
     "tariff_status": ("Tariff update status", None),
     "tariff_valid_until": ("Tariff valid until", None),

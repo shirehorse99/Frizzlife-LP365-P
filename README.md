@@ -1,8 +1,8 @@
-# FrizzLife LP365-P — read-only Home Assistant integration
+# FrizzLife LP365-P — Home Assistant water monitor
 
-Trial version 0.3.0, tested with Home Assistant 2026.10.4 and one LP365-P using local protocol 3.5. Local authentication, live entities, the seven dashboard tabs and Energy water/flow source selection were verified. Multi-device and other firmware support remain untested.
+Trial version 0.4.0, targeting with Home Assistant 2026.10.4 and one LP365-P using local protocol 3.5. Local authentication, live entities, the dashboard tabs and Energy water/flow source selection were verified. Multi-device and other firmware support remain untested.
 
-Provides native sensor and binary sensor entities, plus a reusable seven-tab Lovelace dashboard: Overview, Usage, Diagnostics, Meter comparison, Quality, Leak protection and Scenarios. No device-control entities, valve commands, protection changes or resets. A separate notification-test action sends only messages. Polls every 30 seconds using local Tuya status queries. Phone apps or another local integration may compete for the device's single connection.
+Provides native readings and editable HA settings with nine dashboard tabs: Overview, Usage, Diagnostics, Meter comparison, Quality, Leak protection, Scenarios, Settings and Manual controls. Optional manual valve commands are disabled by default. No protection-setting writes, mode changes or resets are provided. A separate notification-test action sends only messages. Polls every 30 seconds using local Tuya status queries. Phone apps or another local integration may compete for the device's single connection.
 
 ## Installation
 
@@ -27,17 +27,17 @@ strategy:
   type: custom:frizzlife-readonly
 ```
 
-The strategy discovers entities through HA's registries, so entity renames work and no personal entity IDs appear in the layout. Only sensor/binary sensor domains are selected. No frontend framework or extra card plugins are required.
+The strategy discovers entities through HA's registries, so entity renames work and no personal entity IDs appear in the layout. Sensor/binary sensor entities and the integration’s own local settings are selected; unrelated control entities are excluded. No frontend framework or extra card plugins are required.
 
 ## Extra read-only diagnostics
 
-Version 0.1.2 adds seven fault flags decoded from the vendor bitmap (power, empty pipe, backflow, over-range, temperature, hardware and stuck valve), configured protection modes, low-flow protection status, alarm-time raw values and flow-threshold codes. Leak/warning event duration and volume, plus test remaining time, are exposed as raw diagnostics with no assumed units or active-event meaning. Some values may remain from earlier events or inactive settings. These are grouped on the Diagnostics tab. No settings can be changed through the integration. A reported temperature fault flag does not establish a working temperature sensor on the pressure model.
+Version 0.1.2 adds seven fault flags decoded from the vendor bitmap (power, empty pipe, backflow, over-range, temperature, hardware and stuck valve), configured protection modes, low-flow protection status, alarm-time raw values and flow-threshold codes. Leak/warning event duration and volume, plus test remaining time, are exposed as raw diagnostics with no assumed units or active-event meaning. Some values may remain from earlier events or inactive settings. These are grouped on the Diagnostics tab. Raw device configuration remains read-only; local HA settings have their own Settings tab. A reported temperature fault flag does not establish a working temperature sensor on the pressure model.
 
 ## Verification and limitations
 
 Run `.venv/bin/python -m unittest discover -s tests -v`. The tests cover verified counter conversion, unit switching, invalid/missing values, daily reset handling, individual fault bits, extra diagnostic validation, command rejection and connection cleanup. Also run `node tests/test_dashboard.cjs` for registry discovery and graph configuration checks. A live HA trial verified setup after restart, repeated polling, pressure in psi, flow in L/h, consumption in litres, the rendered Overview/Usage/Diagnostics tabs, and Energy selection. History graphs need time to accumulate. HACS/hassfest validation is not claimed as passed.
 
-The integration uses only status queries (including required session authentication). It rejects TinyTuya's device22 control-opcode fallback rather than silently sending it. Missing datapoints are unavailable; unsuccessful polls make entities unavailable. A successful poll means the device answered, not that its physical sensors sampled at that instant. Fault bitmap zero means only that the monitor reported no fault flags.
+Normal polling uses only status queries (including required session authentication). Manual valve writes, when explicitly enabled and confirmed, use a separate transport restricted to boolean DP1. It rejects TinyTuya's device22 control-opcode fallback rather than silently sending it. Missing datapoints are unavailable; unsuccessful polls make entities unavailable. A successful poll means the device answered, not that its physical sensors sampled at that instant. Fault bitmap zero means only that the monitor reported no fault flags.
 
 ## Local development records
 
@@ -75,8 +75,21 @@ Cost sensitivity defaults are 20% less/more usage and a 10% increase in both met
 
 Enable HA notifications and optionally select a `mobile_app_…` phone destination in integration options. Messages cover device leak warnings/alarms, valve-closed and protection-disabled states, reported fault bits, a monitoring outage (default 5 minutes) and the configured usage patterns. Notifications are emitted on transitions, not every poll. Missing data does not clear an alert. Recovery means a reported condition/rule is no longer active, not that a leak has been physically resolved. HA persistent messages use stable IDs; the last-message sensor keeps ten recent messages. Phone-service acceptance does not prove phone receipt. Failed/unavailable phone sends are queued locally and retried, with a maximum 24-hour age and ten pending messages. HA and network availability are required.
 
-The only extra action is `frizzlife_readonly.test_notifications`, targeting one loaded integration entry. It sends a clearly labelled test through the selected HA/phone destinations and sends no device command. Existing entries can load quality/alert entities even when the device is offline at HA startup.
+The notification-test action is `frizzlife_readonly.test_notifications`, targeting one loaded integration entry. It sends a clearly labelled test through the selected HA/phone destinations and sends no device command. Existing entries can load quality/alert entities even when the device is offline at HA startup.
 
-Device-side Protect/Unprotect and actual valve shutoff remain independent of this read-only integration. [The shutoff review](docs/leak-protection.md) describes the manufacturer guidance and a supervised next step. This project does not change device protection, reset alarms, run its leak test, or operate its valve.
+Device-side Protect/Unprotect and automatic shutoff remain independent of the HA observation rules. [The shutoff review](docs/leak-protection.md) describes the manufacturer guidance and a supervised next step. This project does not change device protection, reset alarms or run its leak test. Optional manual valve actions are described below.
 
 Version 0.3.0 validation: 23 Python tests, dashboard tests and compilation pass. Live HA 2026.10.4 loaded 94 entities and all seven views; observed pressure summaries, coverage, current-day/week/month totals, scenario assumptions and notification settings were verified. A notification-only test created an HA message and was accepted by the selected mobile-app service. That does not by itself prove receipt on the handset. No valve/protection command or physical closure test was performed.
+
+
+## Version 0.4.0 dashboard settings and manual control
+
+Usage adds hourly consumption, target progress/remaining litres, yesterday at approximately the same time (five-minute checkpoints), and recorded night consumption. A target of zero selects current tariff/bill break-even; a positive value is a manual litre target. A negative remaining value means over target. The gauge caps visually at 100%; the sensor retains the actual percentage. Same-time history starts when 0.4.0 is installed and requires a usable yesterday. Night consumption uses completed hourly Recorder changes on the current local calendar date within the configured night hours; the current unfinished hour is excluded and missing hours can understate use.
+
+Settings exposes native numbers, switches and selectors for notification destination, flow/night/outage observations, pressure limits and duration, cost assumptions, comparison window and daily target. Changes remain local HA options and preserve observation history. Supplier/custom tariffs remain in integration options. Pressure alerts are off by default, with editable initial limits 1–6 bar lasting five minutes; these are observation defaults, not manufacturer limits or advice about suitable plumbing pressure. Missing observations, restart or a gap over 90 seconds restart pressure runs. They never operate the valve.
+
+Leak protection includes recent messages and a 30-day supervised-test reminder. “Record completed supervised test” records the user's assertion that a manufacturer test has already been completed, actual supply interruption checked, supply restored and protection re-enabled. It sends no valve/test commands and is not independent evidence of mechanical operation.
+
+Manual controls are opt-in. Enabling “Allow manual water valve commands” makes confirmed Open/Close actions available; it does not move the valve. `frizzlife_readonly.set_manual_valve` requires a loaded entry, this opt-in, a current reported valve position, `state: Open` or `Closed`, and `confirmed: true`. It sends one boolean DP1 write through a separate restricted transport, serialised with polling, and checks a subsequent reported state. No automatic control retries or automatic HA shutoff rules are installed. A timeout can mean the command reached the device but its reply was lost: inspect the monitor before trying again. Closing interrupts supply; opening may restore flow into an unresolved leak. Reported success does not prove physical closure. Protection/mode/threshold writes remain excluded.
+
+Software validation covers pressure run duration/gaps/restart, checkpoint retention, manual opt-in/confirmation/current-state guards, DP1-only writes and dashboard action confirmations. Physical valve operation requires a supervised test at the installation and has not been verified by this project.

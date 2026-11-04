@@ -34,7 +34,7 @@ class ComparisonCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         if not self.entry.options.get("comparison_enabled", False):
-            return {"comparison_status": "Disabled — configure integration options"}
+            return self.manual_target_values()
         if not self.entry.data.get("verified_volume", False):
             return {"comparison_status": "Verified volume readings required"}
         now = dt_util.now()
@@ -102,6 +102,13 @@ class ComparisonCoordinator(DataUpdateCoordinator):
         today = decode(self.monitor.data or {}, "water_today") if self.monitor.last_update_success else None
         values = calculate(self.tariff, options.get("annual_unmetered_bill", 0), self.days, today)
         values.update(scenarios(self.tariff, values.get("average_daily_litres"), options.get("annual_unmetered_bill", 0), options))
+        target = options.get("daily_target_litres", 0) or values.get("break_even_daily_litres")
+        if target is not None and target > 0:
+            values["daily_target"] = target
+            if today is not None:
+                values["daily_target_progress"] = today * 1000 / target * 100
+                values["daily_target_remaining"] = target - today * 1000
+        values["target_basis"] = "Manual daily target" if options.get("daily_target_litres", 0) else "Meter break-even at current tariff"
         values.update(tariff_status=self.check_status if self.tariff else "No valid dated tariff — check options/expiry",
                       tariff_last_checked=self.last_checked)
         if self.tariff:
@@ -119,7 +126,21 @@ class ComparisonCoordinator(DataUpdateCoordinator):
         values["comparison_status"] = status
         return values
 
+    def manual_target_values(self):
+        values = {"comparison_status": "Disabled — configure integration options", "target_basis": "Manual daily target"}
+        target = self.entry.options.get("daily_target_litres", 0)
+        today = decode(self.monitor.data or {}, "water_today") if self.monitor.last_update_success and self.entry.data.get("verified_volume") else None
+        if target > 0:
+            values["daily_target"] = target
+            if today is not None:
+                values.update(daily_target_progress=today * 1000 / target * 100, daily_target_remaining=target - today * 1000)
+        return values
+
     def handle_monitor_update(self):
+        if not self.entry.options.get("comparison_enabled", False):
+            self.data = self.manual_target_values()
+            self.async_update_listeners()
+            return
         if self.entry.options.get("comparison_enabled", False) and self.entry.data.get("verified_volume", False) and self.data is not None:
             # Preserve the hourly statistics/tariff refresh deadline. Calling
             # async_set_updated_data every 30 seconds would postpone it forever.

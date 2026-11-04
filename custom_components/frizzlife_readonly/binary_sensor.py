@@ -23,7 +23,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     entities.append(ProtectionStatus(c, "low_flow_enabled", "Low-flow protection enabled"))
     for key, name in {"monitoring_online": "Local monitoring connected", "monitor_offline": "Local monitoring outage",
                       "sustained_flow": "Sustained flow pattern", "overnight_flow": "Overnight flow pattern",
-                      "high_daily_use": "Unusually high daily water use"}.items():
+                      "high_daily_use": "Unusually high daily water use", "pressure_low": "Sustained low pressure", "pressure_high": "Sustained high pressure"}.items():
         entities.append(ObservationStatus(c.analytics, key, name))
     async_add_entities(entities)
 

@@ -8,3 +8,39 @@ test_notifications:
       selector:
         config_entry:
           integration: frizzlife_readonly
+
+set_manual_valve:
+  name: Set water valve manually
+  description: Optional physical water-supply command. Requires manual controls enabled and explicit confirmation. Sends one command and checks reported position; does not prove mechanical operation. No automatic retries.
+  fields:
+    entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: frizzlife_readonly
+    state:
+      required: true
+      selector:
+        select:
+          options:
+            - Open
+            - Closed
+    confirmed:
+      name: Confirm physical water-supply operation
+      required: true
+      selector:
+        boolean:
+record_supervised_test:
+  name: Record a completed supervised test
+  description: Records your confirmation that you already completed a supervised manufacturer test. Does not run a test or operate the valve.
+  fields:
+    entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: frizzlife_readonly
+    confirmed:
+      name: I completed the supervised test and checked restoration and protection
+      required: true
+      selector:
+        boolean:

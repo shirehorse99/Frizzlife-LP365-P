@@ -8,7 +8,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from .analytics import daily_records, usage_summary
+from .analytics import daily_records, usage_summary, night_consumption
 from .const import DOMAIN
 from .readings import decode
 
@@ -30,7 +30,7 @@ class AnalyticsCoordinator(DataUpdateCoordinator):
                 midnight = dt_util.start_of_local_day(now)
                 result = await get_instance(self.hass).async_add_executor_job(
                     statistics_during_period, self.hass, dt_util.as_utc(midnight - timedelta(days=94)),
-                    dt_util.as_utc(midnight), {entity_id}, "hour", {"volume": "m³"}, {"change"})
+                    dt_util.as_utc(now), {entity_id}, "hour", {"volume": "m³"}, {"change"})
                 self.rows = result.get(entity_id, [])
                 self.records = daily_records(self.rows, now)
                 self.statistics_status = "Recorder queried successfully"
@@ -45,6 +45,17 @@ class AnalyticsCoordinator(DataUpdateCoordinator):
         today = decode(self.monitor.data or {}, "water_today") if self.monitor.last_update_success else None
         result, self.usable = usage_summary(self.rows, now, ledger, today, self.records)
         result.update(live, statistics_status=self.statistics_status)
+        if not ledger.usable_day(now.date() - timedelta(days=1), now.tzinfo):
+            result.pop("yesterday_same_time", None)
+        if today is not None and result.get("yesterday_same_time") is not None:
+            result["same_time_difference"] = today * 1000 - result["yesterday_same_time"]
+        result.update(night_consumption(self.rows, now, options))
+        tested = dt_util.parse_datetime(options.get("last_supervised_test", ""))
+        if tested:
+            result["last_supervised_test"] = tested
+            result["test_due"] = tested + timedelta(days=30)
+        result["maintenance_status"] = ("Supervised test due" if now >= tested + timedelta(days=30) else "User-recorded test within 30 days") if tested else "No supervised test recorded"
+        result["manual_controls_status"] = "Enabled — commands available; physical operation unverified" if options.get("device_controls_enabled", False) else "Disabled — device status queries only"
         last = ledger.last_success or ledger.started or now.timestamp()
         result["offline_minutes"] = max(0, now.timestamp() - last) / 60
         result["monitor_offline"] = result["offline_minutes"] >= options.get("offline_minutes", 5)

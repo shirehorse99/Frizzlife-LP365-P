@@ -1,7 +1,7 @@
-/* Registry-based native Lovelace dashboard. No service calls or valve controls. */
+/* Registry-based native Lovelace dashboard with explicit optional manual controls. */
 (() => {
   const domain = 'frizzlife_readonly';
-  const labels = {pressure:'Water pressure · psi',pressure_bar:'Water pressure · bar',flow:'Live flow',water_today:'Water used today',
+  const labels = {daily_target:'Daily target',daily_target_progress:'Daily target used',daily_target_remaining:'Remaining today (negative means over target)',target_basis:'Target basis',yesterday_same_time:'Yesterday at this time · within 5 minutes',same_time_difference:'Today minus yesterday at this time',night_water_recorded:'Night water today · completed hours',night_water_hours:'Night hours recorded',night_water_status:'Night usage basis',pressure_low:'Sustained low pressure',pressure_high:'Sustained high pressure',last_supervised_test:'Last user-recorded supervised test',test_due:'Next test reminder',maintenance_status:'Maintenance',manual_controls_status:'Manual controls',pressure:'Water pressure · psi',pressure_bar:'Water pressure · bar',flow:'Live flow',water_today:'Water used today',
     reported_104:'DP104 raw reading',valve_position:'Valve position',protection:'Protection',
     leak_warning:'Leak warning',leak_alarm:'Leak alarm',faults:'Reported fault bitmap',
     pressure_raw:'Pressure raw reading',measurement_units:'Reported measurement units',last_poll:'Last successful local poll',
@@ -45,9 +45,11 @@
         if (!identity || device.disabled_by) continue;
         const prefix = identity[1] + '_';
         const map = Object.fromEntries(entities.filter(e => e.device_id === device.id &&
-          !e.disabled_by && !e.hidden_by && /^(sensor|binary_sensor)\./.test(e.entity_id) &&
+          !e.disabled_by && !e.hidden_by && (/^(sensor|binary_sensor)\./.test(e.entity_id) || (/^(number|switch|select)\./.test(e.entity_id) && e.unique_id?.startsWith(prefix + 'setting_'))) &&
           e.unique_id?.startsWith(prefix)).map(e => [e.unique_id.slice(prefix.length),e.entity_id]));
-        const rows = keys => keys.filter(k=>map[k]).map(k=>({entity:map[k],name:labels[k]}));
+        const entryId = entities.find(e=>e.device_id === device.id && e.unique_id?.startsWith(prefix) && e.config_entry_id)?.config_entry_id;
+        const action = (name,service,data,confirmation) => ({type:'button',name,icon:'mdi:gesture-tap-button',tap_action:{action:'perform-action',perform_action:`${domain}.${service}`,data:{entry_id:entryId,...data},confirmation:{text:confirmation}}});
+        const rows = keys => keys.filter(k=>map[k]).map(k=>({entity:map[k],...(labels[k]?{name:labels[k]}:{})}));
         const group = (title,keys) => ({type:'entities',title,show_header_toggle:false,entities:rows(keys)});
         const history = (title,keys) => ({type:'history-graph',title,hours_to_show:24,entities:rows(keys)});
         const name = device.name_by_user || device.name || 'Water monitor';
@@ -59,9 +61,14 @@
           history('Pressure · last 24 hours',['pressure']),history('Flow · last 24 hours',['flow'])];
         const usage = [{type:'markdown',content:'## Water usage\nThe device reports a daily counter, which resets at midnight. Home Assistant records its increases across resets. Select **Water used today** as the water source in Energy. History starts when Recorder first sees this entity; previous app history is not imported.'},
           group('Reported consumption',['water_today'])];
-        usage.push(group('Recorded usage trends',['water_yesterday','recorded_week','recorded_month','average_7','average_30','average_90']),
+        usage.push(group('Daily target and comparison',['daily_target','daily_target_progress','daily_target_remaining','target_basis','yesterday_same_time','same_time_difference']),
+          group('Night consumption · today',['night_water_recorded','night_water_hours','night_water_status']),
+          {type:'markdown',content:'Same-time comparison uses a prior counter observation within five minutes and requires a usable yesterday. Negative difference means less water than yesterday. Night consumption sums completed hourly Recorder changes within the configured night hours on this calendar date; it updates hourly and excludes the unfinished hour. Missing hours can understate the total.'},
+          group('Recorded usage trends',['water_yesterday','recorded_week','recorded_month','average_7','average_30','average_90']),
           group('Days supporting the averages',['usable_days_7','usable_days_30','usable_days_90']),
           {type:'markdown',content:'Week/month totals are recorded usage so far, not guaranteed complete bills. Averages and yesterday require usable days with every expected hourly statistic, at least 99% observed water coverage, and no observation gap over 90 seconds. Observation tracking starts with version 0.3.0; earlier dates cannot be certified retroactively.'});
+        if (map.daily_target_progress) usage.push({type:'gauge',entity:map.daily_target_progress,name:'Daily target used',min:0,max:100,severity:{green:0,yellow:75,red:100}});
+        if (map.water_today) usage.push({type:'statistics-graph',title:'Hourly water use · last 24 hours',chart_type:'bar',period:'hour',days_to_show:1,stat_types:['change'],entities:[map.water_today]});
         if (map.water_today) usage.push({type:'statistics-graph',title:'Daily water use · 14 days',
           chart_type:'bar',period:'day',days_to_show:14,stat_types:['change'],entities:[map.water_today]});
         const diagnostic = [group('Reported device data',['last_poll','pressure_raw','measurement_units','faults','reported_104']),
@@ -69,7 +76,7 @@
           group('Protection configuration',['mode_group','smart_mode','pro_mode','low_flow_enabled','low_flow_code','mode4_time_raw','mode5_time_raw','mode6_time_raw','mode4_flow_code','mode5_flow_code','mode6_flow_code']),
           group('Unverified event and test readings',['leak_duration_raw','leak_volume_raw','warning_duration_raw','warning_volume_raw','test_remaining_raw']),
           {type:'markdown',content:'Protection settings are displayed as reported, with no controls. Mode numbers and threshold codes have no assumed physical meaning. Raw event/time values have unverified units and may be retained or inactive values. Fault names follow the vendor bitmap; a temperature fault flag does not imply this pressure model has a working temperature sensor.'},
-          {type:'markdown',content:'This integration reads local status every 30 seconds. It provides no valve, reset, pairing or protection commands. Missing readings are unavailable. The raw fault bitmap is zero when the monitor reports no fault bits.'}];
+          {type:'markdown',content:'This integration reads local status every 30 seconds. Normal polling uses status queries only. Optional manual valve actions are on the Manual controls tab; reset, pairing and protection-setting writes are unavailable. Missing readings are unavailable. The raw fault bitmap is zero when the monitor reports no fault bits.'}];
         const comparison = [
           {type:'markdown',content:'## Would a water meter cost less?\nConfigure **Water meter cost comparison** in the [integration options](/config/integrations/integration/frizzlife_readonly). Select your region/supplier tariff and enter your annual unmetered bill when known. A zero bill means unknown.\n\nEstimates use recorded full hourly days, excluding today and the first observed day. Annual estimates need at least one full day; the indicative result waits for seven. A longer period helps account for seasonal water use. The monitor must cover the whole supply, including any garden taps. This is an estimate, not a supplier quote.'},
           group('Comparison basis',['comparison_status','sample_days','average_daily_litres','projected_annual_m3']),
@@ -84,18 +91,40 @@
         for (const window of [7,30,90]) if (map[`history_progress_${window}`]) quality.push({type:'gauge',
           entity:map[`history_progress_${window}`],name:`${window} usable days · sample progress`,min:0,max:100});
         const protection = [
-          {type:'markdown',content:'## Leak protection and messages\nThe device’s **Protect** setting controls its own local monitoring and automatic shutoff. This dashboard observes it and sends configured messages; it does not command the valve or change protection settings. Reported valve position is not a physical closure test.\n\nIn Automatic mode, the smart-mode selection is active; the pro-mode settings are stored alternatives. Exact automatic thresholds and raw/code mappings are not verified for this firmware.'},
+          {type:'markdown',content:'## Leak protection and messages\nThe device’s **Protect** setting controls its own local monitoring and automatic shutoff. This tab observes it and sends configured messages. Optional manual valve actions are separate, on the Manual controls tab; protection settings are unchanged. Reported valve position is not a physical closure test.\n\nIn Automatic mode, the smart-mode selection is active; the pro-mode settings are stored alternatives. Exact automatic thresholds and raw/code mappings are not verified for this firmware.'},
           group('Reported device protection',['protection','active_protection_mode','valve_position','leak_warning','leak_alarm','low_flow_enabled','low_flow_code','protection_review']),
           group('Additional observations · not confirmed leaks',['sustained_flow','overnight_flow','high_daily_use','flow_run_minutes','night_flow_minutes','high_daily_threshold']),
           group('Notifications and messages',['notification_status','last_notification','last_notification_time']),
           {type:'markdown',content:'Enable alerts and select the phone in [integration options](/config/integrations/integration/frizzlife_readonly). Messages cover device leak warnings/alarms, protection disabled, valve changes, monitor outages, device fault bits, and configured unusual-use patterns. Messages are sent on state transitions, not every poll. Phone-service acceptance does not prove phone delivery. The last message entity contains the ten most recent messages in its attributes.\n\nDefault observation settings: 5 L/h for 60 minutes sustained flow, 30 minutes during 00:00–06:00 for night flow, 5 minutes without a successful reading for an outage. High daily use needs 7 usable days and exceeds both 500 L and twice the observed 30-day average. These are editable observation defaults, not manufacturer shutoff limits.\n\nThe manual says the device’s allowed-flow setting can ignore continuous flow below its limit. Confirm the actual threshold and units in the phone app; a raw threshold code is not a reading in L/h. The manufacturer also warns that clearing an alarm can leave protection off until it is re-enabled. Check the reported protection state after using the app/panel. Built-in protection may continue during power/network loss; HA messages require HA/network availability. See the [manufacturer support guidance](https://www.frizzlife.com/pages/lp365-support).'}];
+        protection.push(group('Pressure observations',['pressure_low','pressure_high']));
+        if (map.last_notification) protection.push({type:'markdown',title:'Recent water messages',content:`{% set messages = state_attr('${map.last_notification}', 'recent_messages') or [] %}{% for m in messages | reverse %}**{{ m.title }}** · {{ as_local(as_datetime(m.at)).strftime('%d %b %H:%M') }}
+
+{{ m.message }}
+
+---
+{% else %}No messages recorded.{% endfor %}`});
+        protection.push(group('Maintenance reminder',['maintenance_status','last_supervised_test','test_due']));
+        if (entryId) protection.push(action('Record completed supervised test','record_supervised_test',{confirmed:true},'Record that YOU have already completed the manufacturer test, checked actual closure, restored the supply and re-enabled protection? This button does not run a test.'));
+        const settings = [
+          {type:'markdown',content:'## Dashboard settings\nThese controls adjust Home Assistant observations, messages and estimates. Pressure alerts start disabled; their limits are your observation settings and do not change manufacturer protection. Enter a daily target of 0 to use the current meter break-even figure. Phone “none” means Home Assistant only. Supplier and custom rates remain in [integration options](/config/integrations/integration/frizzlife_readonly).'},
+          group('Notifications and pressure alerts',['setting_notifications_enabled','setting_phone_notify_service','setting_pressure_alerts_enabled','setting_pressure_low_bar','setting_pressure_high_bar','setting_pressure_alert_minutes']),
+          group('Flow and outage observations',['setting_flow_observation_lph','setting_sustained_minutes','setting_overnight_minutes','setting_night_start_hour','setting_night_end_hour','setting_offline_minutes','setting_high_daily_min_litres','setting_high_daily_multiplier']),
+          group('Targets and cost assumptions',['setting_daily_target_litres','setting_comparison_enabled','setting_annual_unmetered_bill','setting_comparison_days','setting_sewer_return_percent','setting_auto_tariffs','setting_scenario_usage_percent','setting_scenario_tariff_percent'])];
+        if (entryId) settings.push(action('Send test notification','test_notifications',{},'Send a labelled test to your configured Home Assistant and phone destinations?'));
+        const controls = [
+          {type:'markdown',content:'## Optional manual water valve control\n**Disabled by default.** Enabling the switch makes the manual actions available; it does not move the valve. Closing interrupts the water supply. Opening can restore flow into a leak. Check the property before acting.\n\nEach action sends one valve command and checks the subsequently reported position. Physical closure and restoration still require a supervised test. No automatic shutoff automation is installed. Protection, mode and unverified threshold writes remain unavailable.'},
+          group('Enable and review',['setting_device_controls_enabled','manual_controls_status','valve_position','protection','leak_alarm','protection_review'])];
+        if (entryId && map.setting_device_controls_enabled) controls.push({type:'conditional',conditions:[{entity:map.setting_device_controls_enabled,state:'on'}],card:{type:'horizontal-stack',cards:[
+          action('Close water valve','set_manual_valve',{state:'Closed',confirmed:true},'CLOSE the physical water valve now? This interrupts the water supply. Make sure affected equipment can tolerate the interruption.'),
+          action('Open water valve','set_manual_valve',{state:'Open',confirmed:true},'OPEN the physical water valve now? Water may flow into an unresolved leak. Confirm it is safe to restore the supply.')
+        ]}});
         const scenario = [
           {type:'markdown',content:'## Cost sensitivity\nThese are illustrative scenarios at the observed average usage. They are not forecasts of future use or published price increases. Configure the percentages under observation/scenario options. The tariff-rise scenario increases both standing and volumetric charges while leaving your unmetered baseline unchanged.'},
           group('Annual scenario estimates',['projected_annual_cost','scenario_lower_usage','scenario_higher_usage','scenario_tariff_rise','scenario_rise_saving'])];
         if (map.annual_standing) scenario.push({type:'entities',title:'Scenario assumptions',entities:[
           {type:'attribute',entity:map.annual_standing,attribute:'usage_scenario_percent',name:'Higher / lower usage (%)'},
           {type:'attribute',entity:map.annual_standing,attribute:'tariff_scenario_percent',name:'Tariff increase (%)'}]});
-        for (const [title,cards,icon] of [['Overview',overview,'mdi:water'],['Usage',usage,'mdi:chart-bar'],['Diagnostics',diagnostic,'mdi:information-outline'],['Meter comparison',comparison,'mdi:currency-gbp'],['Quality',quality,'mdi:check-network-outline'],['Leak protection',protection,'mdi:shield-check-outline'],['Scenarios',scenario,'mdi:calculator']])
+        for (const [title,cards,icon] of [['Overview',overview,'mdi:water'],['Usage',usage,'mdi:chart-bar'],['Diagnostics',diagnostic,'mdi:information-outline'],['Meter comparison',comparison,'mdi:currency-gbp'],['Quality',quality,'mdi:check-network-outline'],['Leak protection',protection,'mdi:shield-check-outline'],['Scenarios',scenario,'mdi:calculator'],['Settings',settings,'mdi:cog'],['Manual controls',controls,'mdi:valve']])
           views.push({title:`${name} · ${title}`,path:`${device.id}-${title.toLowerCase()}`,icon,cards});
       }
       return {title:'Water Monitor',views:views.length?views:[{title:'Setup',cards:[{type:'markdown',content:'Add the FrizzLife Water Monitor (read only) integration first. Verified volume readings must be enabled during setup for Energy statistics.'}]}]};

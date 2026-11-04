@@ -94,6 +94,47 @@ class ObservationTests(unittest.TestCase):
         self.assertEqual(result['pressure_max_today'], 4)
         self.assertEqual(result['pressure_mean_today'], 3.5)
 
+    def test_pressure_duration_gaps_missing_values_and_changed_limits(self):
+        ledger = obs.ObservationLedger()
+        options = {'pressure_alerts_enabled':True,'pressure_low_bar':2,'pressure_high_bar':6,'pressure_alert_minutes':2}
+        for sec in range(0, 121, 30):
+            ledger.record(self.start + timedelta(seconds=sec),True,.1,0,1,options=options)
+        self.assertTrue(ledger.live(self.start + timedelta(seconds=120),options)['pressure_low'])
+        self.assertFalse(ledger.live(self.start + timedelta(seconds=120),options)['pressure_high'])
+        ledger.record(self.start + timedelta(seconds=150),True,.1,0,None,options=options)
+        self.assertIsNone(ledger.live(self.start + timedelta(seconds=150),options)['pressure_low'])
+        ledger.record(self.start + timedelta(seconds=180),True,.1,0,1,options=options)
+        self.assertIsNone(ledger.live(self.start + timedelta(seconds=180),options)['pressure_low'])
+        changed = {**options,'pressure_low_bar':1.5}
+        ledger.record(self.start + timedelta(seconds=210),True,.1,0,1,options=changed)
+        self.assertIsNone(ledger.live(self.start + timedelta(seconds=210),changed)['pressure_low'])
+        ledger.record(self.start + timedelta(seconds=400),True,.1,0,1,options=changed)
+        self.assertIsNone(ledger.live(self.start + timedelta(seconds=400),changed)['pressure_low'])
+        restored = obs.ObservationLedger(ledger.dump())
+        self.assertEqual(restored.pressure_runs,{})
+
+    def test_prior_counter_checkpoint_is_bounded_and_not_fabricated(self):
+        ledger = obs.ObservationLedger()
+        at = self.start + timedelta(hours=12)
+        ledger.record(at,True,.123,0,3)
+        restored = obs.ObservationLedger(ledger.dump())
+        result = restored.live(at + timedelta(days=1,minutes=4),{})
+        self.assertEqual(result['yesterday_same_time'],123)
+        self.assertNotIn('yesterday_same_time',restored.live(at + timedelta(days=1,minutes=6),{}))
+        ledger.record(at + timedelta(days=4),True,.2,0,3)
+        self.assertNotIn(self.start.date().isoformat(),ledger.samples)
+
+    def test_night_consumption_excludes_current_hour_and_keeps_missing_unknown(self):
+        now = self.start + timedelta(hours=4,minutes=30)
+        rows = [{'start':(self.start + timedelta(hours=h)).timestamp(),'change':.01} for h in (0,1,3,4)]
+        result = analytics.night_consumption(rows, now, {})
+        self.assertEqual(result['night_water_recorded'],30)
+        self.assertEqual(result['night_water_hours'],3)
+        self.assertNotIn('night_water_recorded',analytics.night_consumption([],now,{}))
+        late = self.start + timedelta(hours=23,minutes=30)
+        result = analytics.night_consumption(rows + [{'start':(self.start + timedelta(hours=22)).timestamp(),'change':.02}],late,{'night_start_hour':22,'night_end_hour':6})
+        self.assertEqual(result['night_water_recorded'],60)
+
     def test_scenarios_vary_usage_and_all_metered_charges_as_documented(self):
         tariff = {'water_rate':2,'sewer_rate':3,'return_percent':100,'annual_standing':100}
         result = analytics.scenarios(tariff, 1000, 2500, {})
