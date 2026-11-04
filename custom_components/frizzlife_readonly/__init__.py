@@ -15,6 +15,7 @@ from .observations import ObservationLedger
 from .readings import decode
 from .notifications import NotificationManager
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.config_entries import ConfigEntryState
 
 
 class MonitorCoordinator(DataUpdateCoordinator):
@@ -92,7 +93,7 @@ async def async_setup_entry(hass, entry):
     if not hass.services.has_service(DOMAIN, "set_manual_valve"):
         async def set_valve(call):
             target = hass.config_entries.async_get_entry(call.data["entry_id"])
-            if target is None or target.domain != DOMAIN or not hasattr(target, "runtime_data"):
+            if target is None or target.domain != DOMAIN or target.state is not ConfigEntryState.LOADED or not hasattr(target, "runtime_data"):
                 raise HomeAssistantError("A loaded FrizzLife entry is required")
             c = target.runtime_data
             async with c.command_lock:
@@ -100,7 +101,7 @@ async def async_setup_entry(hass, entry):
                 desired = call.data["state"]
                 try:
                     needed = validate_manual_request(target.options.get("device_controls_enabled", False),
-                        call.data.get("confirmed"), c.last_update_success,
+                        call.data.get("confirmed"), c.last_update_success and c.last_poll is not None and (dt_util.utcnow() - c.last_poll).total_seconds() <= 90,
                         decode(c.data or {}, "valve_position"), desired)
                 except ValueError as err:
                     raise HomeAssistantError(str(err)) from None
@@ -120,7 +121,7 @@ async def async_setup_entry(hass, entry):
     if not hass.services.has_service(DOMAIN, "record_supervised_test"):
         async def record_test(call):
             target = hass.config_entries.async_get_entry(call.data["entry_id"])
-            if target is None or target.domain != DOMAIN or not hasattr(target, "runtime_data") or call.data.get("confirmed") is not True:
+            if target is None or target.domain != DOMAIN or target.state is not ConfigEntryState.LOADED or not hasattr(target, "runtime_data") or call.data.get("confirmed") is not True:
                 raise HomeAssistantError("Confirm that you completed a supervised test before recording it")
             hass.config_entries.async_update_entry(target, options={**target.options, "last_supervised_test": dt_util.utcnow().isoformat()})
         hass.services.async_register(DOMAIN, "record_supervised_test", record_test, schema=vol.Schema({
